@@ -71,7 +71,7 @@ export default function App() {
           }
         />
         <Route
-          path="/project/:id/*"
+          path="/project/:id"
           element={
             <ProtectedRoute user={user} loading={loading}>
               <ProjectRoom />

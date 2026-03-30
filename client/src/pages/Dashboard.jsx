@@ -6,20 +6,6 @@ import { supabase } from "../lib/supabase";
 const ICONS = ["⚡", "🧪", "🌳", "📐", "🔬", "🎨", "💻", "📊", "🚀", "🧬", "🎸", "🌍", "🧠", "⚗️", "🏛️", "🎭"];
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#38bdf8", "#8b5cf6", "#ef4444", "#14b8a6", "#f97316", "#a855f7"];
 
-const mockProjects = [
-  { id: 1, name: "Physics — Electromagnetism", description: "Maxwell's equations, induction, and wave theory", lastUpdated: "2h ago", progress: 68, color: "#6366f1", icon: "⚡", docs: 3 },
-  { id: 2, name: "Organic Chemistry", description: "Reaction mechanisms, functional groups, stereochemistry", lastUpdated: "1d ago", progress: 42, color: "#10b981", icon: "🧪", docs: 5 },
-  { id: 3, name: "Data Structures", description: "Trees, graphs, dynamic programming and algorithms", lastUpdated: "3d ago", progress: 85, color: "#f59e0b", icon: "🌳", docs: 2 },
-  { id: 4, name: "Linear Algebra", description: "Matrices, eigenvalues, and vector spaces", lastUpdated: "5d ago", progress: 30, color: "#ec4899", icon: "📐", docs: 1 },
-];
-
-const STATS = [
-  { label: "Projects", value: "4", icon: "📁", color: "#6366f1", bg: "rgba(99,102,241,0.12)" },
-  { label: "Hours Studied", value: "142", icon: "⏱️", color: "#10b981", bg: "rgba(16,185,129,0.10)" },
-  { label: "AI Chats", value: "89", icon: "🤖", color: "#f59e0b", bg: "rgba(245,158,11,0.10)" },
-  { label: "Flashcards Made", value: "256", icon: "🃏", color: "#ec4899", bg: "rgba(236,72,153,0.10)" },
-];
-
 const NAV = [
   { icon: "🏠", label: "Dashboard", key: "dashboard" },
   { icon: "📁", label: "Projects", key: "projects" },
@@ -36,7 +22,6 @@ function NewProjectModal({ open, onClose, onCreate }) {
   const [desc, setDesc] = useState("");
   const [icon, setIcon] = useState("📚");
   const [color, setColor] = useState("#6366f1");
-  const [typing, setTyping] = useState(false);
   const nameRef = useRef(null);
   const descRef = useRef(null);
 
@@ -272,28 +257,60 @@ function NewProjectModal({ open, onClose, onCreate }) {
 // ── Main Dashboard ──────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState(mockProjects);
+  const [projects, setProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [activeNav, setActiveNav] = useState("dashboard");
   const [search, setSearch] = useState("");
   const [user, setUser] = useState(null);
 
+  // Fetch user
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
 
-  const handleCreate = (proj) => {
+  // Fetch projects from Supabase
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoadingProjects(true);
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) return;
+
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("created_at", { ascending: false });
+
+      if (!error && data) setProjects(data);
+      setLoadingProjects(false);
+    };
+    fetchProjects();
+  }, []);
+
+  const handleCreate = async (proj) => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) return;
+
     const newProj = {
-      id: Date.now(),
+      user_id: currentUser.id,
       name: proj.name,
       description: proj.description || "No description yet",
-      lastUpdated: "just now",
       progress: 0,
       color: proj.color,
       icon: proj.icon,
       docs: 0,
     };
-    setProjects((p) => [newProj, ...p]);
+
+    const { data, error } = await supabase
+      .from("projects")
+      .insert([newProj])
+      .select()
+      .single();
+
+    if (!error && data) {
+      setProjects((p) => [data, ...p]);
+    }
   };
 
   const handleLogout = async () => {
@@ -304,14 +321,22 @@ export default function Dashboard() {
   const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Student";
   const initials = displayName.slice(0, 2).toUpperCase();
 
+  // Dynamic stats
+  const STATS = [
+    { label: "Projects", value: String(projects.length), icon: "📁", color: "#6366f1", bg: "rgba(99,102,241,0.12)" },
+    { label: "Docs Uploaded", value: String(projects.reduce((s, p) => s + (p.docs || 0), 0)), icon: "📎", color: "#10b981", bg: "rgba(16,185,129,0.10)" },
+    { label: "AI Chats", value: "—", icon: "🤖", color: "#f59e0b", bg: "rgba(245,158,11,0.10)" },
+    { label: "Flashcards", value: "—", icon: "🃏", color: "#ec4899", bg: "rgba(236,72,153,0.10)" },
+  ];
+
   const filtered = projects.filter(
     (p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.description.toLowerCase().includes(search.toLowerCase())
+      (p.description || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div className="min-h-screen mesh-bg" style={{ background: "var(--bg-primary)" }}>
+    <div className="mesh-bg" style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
       {/* Background orbs */}
       <div className="orb" style={{ width: 500, height: 500, top: -200, right: -150, background: "rgba(99,102,241,0.07)" }} />
       <div className="orb" style={{ width: 350, height: 350, bottom: -100, left: -100, background: "rgba(139,92,246,0.06)" }} />
@@ -488,7 +513,13 @@ export default function Dashboard() {
         </div>
 
         {/* Project grid */}
-        {filtered.length === 0 ? (
+        {loadingProjects ? (
+          <div className="fade-in" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem" }}>
+            {[1,2,3,4].map((i) => (
+              <div key={i} className="card shimmer" style={{ height: 180 }} />
+            ))}
+          </div>
+        ) : filtered.length === 0 && search ? (
           <div
             className="fade-in"
             style={{ textAlign: "center", padding: "4rem 2rem", color: "var(--text-muted)" }}
@@ -496,6 +527,18 @@ export default function Dashboard() {
             <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔍</div>
             <p style={{ fontSize: "1rem", fontWeight: 500 }}>No projects match "{search}"</p>
             <p style={{ fontSize: "0.85rem" }}>Try a different keyword</p>
+          </div>
+        ) : projects.length === 0 ? (
+          <div
+            className="fade-in"
+            style={{ textAlign: "center", padding: "5rem 2rem", color: "var(--text-muted)" }}
+          >
+            <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>📂</div>
+            <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-secondary)" }}>No projects yet</p>
+            <p style={{ fontSize: "0.85rem", marginBottom: "1.5rem" }}>Create your first study project to get started!</p>
+            <button className="btn-primary" onClick={() => setShowNew(true)} style={{ padding: "0.75rem 2rem" }}>
+              + Create First Project
+            </button>
           </div>
         ) : (
           <div className="fade-in" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem" }}>
