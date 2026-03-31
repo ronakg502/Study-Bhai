@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import api from "../api/axios";
 
 // ── Project icons & colors palette ─────────────────────────────
 const ICONS = ["⚡", "🧪", "🌳", "📐", "🔬", "🎨", "💻", "📊", "🚀", "🧬", "🎸", "🌍", "🧠", "⚗️", "🏛️", "🎭"];
@@ -22,11 +23,12 @@ function NewProjectModal({ open, onClose, onCreate }) {
   const [desc, setDesc] = useState("");
   const [icon, setIcon] = useState("📚");
   const [color, setColor] = useState("#6366f1");
+  const [creating, setCreating] = useState(false);
   const nameRef = useRef(null);
   const descRef = useRef(null);
 
   useEffect(() => {
-    if (open) { setStep(1); setName(""); setDesc(""); setIcon("📚"); setColor("#6366f1"); }
+    if (open) { setStep(1); setName(""); setDesc(""); setIcon("📚"); setColor("#6366f1"); setCreating(false); }
   }, [open]);
 
   useEffect(() => {
@@ -41,9 +43,11 @@ function NewProjectModal({ open, onClose, onCreate }) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); setStep(3); }
   };
 
-  const handleCreate = () => {
-    if (!name.trim()) return;
-    onCreate({ name: name.trim(), description: desc.trim(), icon, color });
+  const handleCreate = async () => {
+    if (!name.trim() || creating) return;
+    setCreating(true);
+    await onCreate({ name: name.trim(), description: desc.trim(), icon, color });
+    setCreating(false);
     onClose();
   };
 
@@ -242,9 +246,10 @@ function NewProjectModal({ open, onClose, onCreate }) {
               <button
                 className="btn-primary"
                 onClick={handleCreate}
-                style={{ flex: 1, padding: "0.875rem", fontSize: "0.95rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
+                disabled={creating}
+                style={{ flex: 1, padding: "0.875rem", fontSize: "0.95rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", opacity: creating ? 0.7 : 1 }}
               >
-                🚀 Create Project
+                {creating ? "⏳ Creating…" : "🚀 Create Project"}
               </button>
             </div>
           </div>
@@ -269,47 +274,36 @@ export default function Dashboard() {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
 
-  // Fetch projects from Supabase
+  // Fetch projects from server API (uses service key — bypasses RLS)
   useEffect(() => {
     const fetchProjects = async () => {
       setLoadingProjects(true);
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) return;
-
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("user_id", currentUser.id)
-        .order("created_at", { ascending: false });
-
-      if (!error && data) setProjects(data);
+      try {
+        const res = await api.get("/projects");
+        setProjects(res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch projects:", err);
+        setProjects([]);
+      }
       setLoadingProjects(false);
     };
     fetchProjects();
   }, []);
 
   const handleCreate = async (proj) => {
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-    if (!currentUser) return;
-
-    const newProj = {
-      user_id: currentUser.id,
-      name: proj.name,
-      description: proj.description || "No description yet",
-      progress: 0,
-      color: proj.color,
-      icon: proj.icon,
-      docs: 0,
-    };
-
-    const { data, error } = await supabase
-      .from("projects")
-      .insert([newProj])
-      .select()
-      .single();
-
-    if (!error && data) {
-      setProjects((p) => [data, ...p]);
+    try {
+      const res = await api.post("/projects", {
+        name: proj.name,
+        description: proj.description || "No description yet",
+        color: proj.color,
+        icon: proj.icon,
+      });
+      if (res.data) {
+        setProjects((p) => [res.data, ...p]);
+      }
+    } catch (err) {
+      console.error("Failed to create project:", err);
+      alert("Failed to create project. Make sure the server is running.");
     }
   };
 
@@ -586,6 +580,22 @@ export default function Dashboard() {
 function ProjectCard({ project, delay, onClick }) {
   const [hovered, setHovered] = useState(false);
 
+  // Format the date
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "Just now";
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return d.toLocaleDateString();
+  };
+
   return (
     <div
       className="card"
@@ -630,11 +640,11 @@ function ProjectCard({ project, delay, onClick }) {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "0.3rem" }}>
               <span>Progress</span>
-              <span style={{ color: project.color, fontWeight: 600 }}>{project.progress}%</span>
+              <span style={{ color: project.color, fontWeight: 600 }}>{project.progress || 0}%</span>
             </div>
             <div style={{ height: 4, background: "var(--bg-hover)", borderRadius: 2, overflow: "hidden" }}>
               <div style={{
-                height: "100%", width: `${project.progress}%`,
+                height: "100%", width: `${project.progress || 0}%`,
                 background: `linear-gradient(90deg, ${project.color}, ${project.color}99)`,
                 borderRadius: 2, transition: "width 1s ease",
               }} />
@@ -650,7 +660,7 @@ function ProjectCard({ project, delay, onClick }) {
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Updated {project.lastUpdated}</span>
+          <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Updated {formatDate(project.updated_at || project.created_at)}</span>
           {project.docs > 0 && (
             <span className="badge badge-purple">📎 {project.docs} doc{project.docs > 1 ? "s" : ""}</span>
           )}

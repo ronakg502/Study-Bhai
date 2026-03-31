@@ -1,24 +1,47 @@
 import { useState, useRef, useEffect } from "react";
 import api from "../../api/axios";
 
-const suggestions = [
-  "Explain Faraday's Law of Induction",
-  "What is the difference between AC and DC?",
-  "Summarize the key equations in electromagnetism",
-  "Give me a quiz on Maxwell's equations",
+const defaultSuggestions = [
+  "Summarize the key concepts from the uploaded material",
+  "Explain the most important topics in detail",
+  "Give me a quiz based on this material",
+  "List the main formulas and definitions",
 ];
 
-export default function Chat() {
+const noDocSuggestions = [
+  "What should I study for my exam?",
+  "Help me create a study plan",
+  "Explain a concept to me",
+  "Give me tips for effective studying",
+];
+
+export default function Chat({ pdfText = "", projectId }) {
   const [message, setMessage] = useState("");
-  const [chat, setChat] = useState([
-    {
-      role: "ai",
-      text: "Hi! I'm your AI study assistant 🤖\n\nUpload a PDF and ask me anything about it — I'll explain concepts, generate quizzes, create summaries, and more!",
-    },
-  ]);
+  const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
+
+  // Update the initial message when pdfText changes
+  useEffect(() => {
+    if (pdfText) {
+      setChat([
+        {
+          role: "ai",
+          text: "📄 PDF loaded successfully! I've read through your material.\n\nAsk me anything — I can explain concepts, generate quizzes, create summaries, highlight key points, and more!",
+        },
+      ]);
+    } else {
+      setChat([
+        {
+          role: "ai",
+          text: "Hi! I'm your AI study assistant 🤖\n\nUpload a PDF using the button above and ask me anything about it — I'll explain concepts, generate quizzes, create summaries, and more!",
+        },
+      ]);
+    }
+  }, [pdfText]);
+
+  const suggestions = pdfText ? defaultSuggestions : noDocSuggestions;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -46,7 +69,7 @@ export default function Chat() {
     try {
       const res = await api.post("/ai/chat", {
         message: userMsg,
-        context: "electromagnetism study material",
+        context: pdfText || "No study material uploaded yet. Help the student with general study advice.",
       });
       setChat((prev) => [...prev, { role: "ai", text: res.data.reply }]);
     } catch {

@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
+import api from "../../api/axios";
 import Chat from "./chat";
 import Summary from "./summary";
 import QnA from "./QnA";
@@ -22,27 +24,82 @@ const COMPONENTS = {
   solver: SumSolver,
 };
 
-// Mock project data
-const PROJECT_META = {
-  1: { name: "Physics — Electromagnetism", icon: "⚡", color: "#6366f1" },
-  2: { name: "Organic Chemistry",          icon: "🧪", color: "#10b981" },
-  3: { name: "Data Structures",            icon: "🌳", color: "#f59e0b" },
-  4: { name: "Linear Algebra",             icon: "📐", color: "#ec4899" },
-};
-
 export default function ProjectRoom() {
   const navigate = useNavigate();
   const { id }   = useParams();
   const [activeTab, setActiveTab] = useState("chat");
   const [uploading, setUploading] = useState(false);
-  const [uploaded,  setUploaded]  = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [pdfText, setPdfText] = useState("");      // extracted PDF text
+  const [uploaded, setUploaded] = useState(false);
 
-  const meta = PROJECT_META[id] || { name: `Project #${id}`, icon: "📁", color: "#6366f1" };
+  // Fetch real project metadata from Supabase
+  const [meta, setMeta] = useState({ name: "Loading…", icon: "📁", color: "#6366f1" });
+
+  useEffect(() => {
+    const fetchProject = async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (!error && data) {
+        setMeta({
+          name: data.name,
+          icon: data.icon || "📁",
+          color: data.color || "#6366f1",
+          description: data.description,
+        });
+      }
+    };
+    fetchProject();
+  }, [id]);
+
   const ActiveComponent = COMPONENTS[activeTab];
 
-  const handleUpload = () => {
+  // ── Real file upload ───────────────────────────────────────
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Basic validation
+    if (file.type !== "application/pdf") {
+      setUploadError("Please upload a PDF file.");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setUploadError("File too large. Max 20 MB.");
+      return;
+    }
+
     setUploading(true);
-    setTimeout(() => { setUploading(false); setUploaded(true); }, 2000);
+    setUploadError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await api.post("/materials/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.data?.text) {
+        setPdfText(res.data.text);
+        setUploaded(true);
+      } else {
+        setUploadError("Could not extract text from the PDF.");
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
+      setUploadError(
+        err.response?.data?.error || "Upload failed. Make sure the server is running."
+      );
+    } finally {
+      setUploading(false);
+      // Reset the input so the same file can be re-selected
+      e.target.value = "";
+    }
   };
 
   return (
@@ -129,8 +186,13 @@ export default function ProjectRoom() {
             </div>
           </div>
 
-          {/* Upload + Share */}
+          {/* Upload + error */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+            {uploadError && (
+              <span style={{ fontSize: "0.72rem", color: "#ef4444", maxWidth: 200, textAlign: "right" }}>
+                {uploadError}
+              </span>
+            )}
             <label
               style={{
                 display: "flex",
@@ -143,13 +205,20 @@ export default function ProjectRoom() {
                 color: uploaded ? "#10b981" : "var(--text-secondary)",
                 fontSize: "0.8rem",
                 fontWeight: 500,
-                cursor: "pointer",
+                cursor: uploading ? "wait" : "pointer",
                 transition: "all 0.2s",
                 whiteSpace: "nowrap",
+                opacity: uploading ? 0.7 : 1,
               }}
             >
-              <input type="file" accept=".pdf" style={{ display: "none" }} onChange={handleUpload} />
-              {uploading ? "⏳ Uploading…" : uploaded ? "📄 PDF Ready" : "📎 Upload PDF"}
+              <input
+                type="file"
+                accept=".pdf"
+                style={{ display: "none" }}
+                onChange={handleUpload}
+                disabled={uploading}
+              />
+              {uploading ? "⏳ Uploading…" : uploaded ? "📄 PDF Ready ✓" : "📎 Upload PDF"}
             </label>
           </div>
         </div>
@@ -224,7 +293,7 @@ export default function ProjectRoom() {
 
       {/* ── Tab content ─────────────────────────────────── */}
       <div style={{ flex: 1, overflowY: "auto" }} key={activeTab} className="fade-in">
-        <ActiveComponent />
+        <ActiveComponent pdfText={pdfText} projectId={id} />
       </div>
     </div>
   );
