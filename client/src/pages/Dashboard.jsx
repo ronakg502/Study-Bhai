@@ -9,11 +9,7 @@ const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#38bdf8", "#8b5cf6"
 
 const NAV = [
   { icon: "🏠", label: "Dashboard", key: "dashboard" },
-  { icon: "📁", label: "Projects", key: "projects" },
-  { icon: "🤖", label: "AI Chat", key: "ai" },
-  { icon: "🃏", label: "Flashcards", key: "flashcards" },
-  { icon: "📊", label: "Analytics", key: "analytics" },
-  { icon: "⚙️", label: "Settings", key: "settings" },
+  { icon: "📁", label: "Projects",  key: "projects" },
 ];
 
 // ── ChatGPT-style "New Project" modal ──────────────────────────
@@ -307,6 +303,20 @@ export default function Dashboard() {
     }
   };
 
+  const handleDelete = async (e, projectId) => {
+    e.stopPropagation();
+    if (!window.confirm("Delete this project? This cannot be undone.")) return;
+    try {
+      await api.delete(`/projects/${projectId}`);
+      // Also wipe associated chat messages
+      await supabase.from("chat_messages").delete().eq("project_id", projectId);
+      setProjects((p) => p.filter((proj) => proj.id !== projectId));
+    } catch (err) {
+      console.error("Failed to delete project:", err);
+      alert("Failed to delete project. Try again.");
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/");
@@ -537,7 +547,7 @@ export default function Dashboard() {
         ) : (
           <div className="fade-in" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem" }}>
             {filtered.map((project, idx) => (
-              <ProjectCard key={project.id} project={project} delay={idx * 0.07} onClick={() => navigate(`/project/${project.id}`)} />
+              <ProjectCard key={project.id} project={project} delay={idx * 0.07} onClick={() => navigate(`/project/${project.id}`)} onDelete={(e) => handleDelete(e, project.id)} />
             ))}
 
             {/* "New project" placeholder card */}
@@ -577,8 +587,15 @@ export default function Dashboard() {
 }
 
 // ── Project Card ────────────────────────────────────────────────
-function ProjectCard({ project, delay, onClick }) {
+function ProjectCard({ project, delay, onClick, onDelete }) {
   const [hovered, setHovered] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteClick = async (e) => {
+    setDeleting(true);
+    await onDelete(e);
+    setDeleting(false);
+  };
 
   // Format the date
   const formatDate = (dateStr) => {
@@ -653,30 +670,37 @@ function ProjectCard({ project, delay, onClick }) {
         </div>
       </div>
 
-      {/* Footer */}
-      <div style={{
-        marginTop: "1rem", paddingTop: "0.875rem",
-        borderTop: "1px solid var(--border)",
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Updated {formatDate(project.updated_at || project.created_at)}</span>
-          {project.docs > 0 && (
-            <span className="badge badge-purple">📎 {project.docs} doc{project.docs > 1 ? "s" : ""}</span>
-          )}
+        <div style={{ marginTop: "1rem", paddingTop: "0.875rem", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Updated {formatDate(project.updated_at || project.created_at)}</span>
+            {project.docs > 0 && (
+              <span className="badge badge-purple">📎 {project.docs} doc{project.docs > 1 ? "s" : ""}</span>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            {hovered && (
+              <button
+                onClick={handleDeleteClick}
+                disabled={deleting}
+                title="Delete project"
+                style={{
+                  background: "rgba(239,68,68,0.1)",
+                  border: "1px solid rgba(239,68,68,0.35)",
+                  color: "#ef4444",
+                  borderRadius: "0.5rem",
+                  padding: "0.2rem 0.6rem",
+                  fontSize: "0.72rem",
+                  cursor: deleting ? "not-allowed" : "pointer",
+                  fontWeight: 600,
+                  transition: "all 0.2s",
+                  opacity: deleting ? 0.6 : 1,
+                }}
+              >
+                {deleting ? "⏳" : "🗑 Delete"}
+              </button>
+            )}
+          </div>
         </div>
-        <div style={{ display: "flex", gap: "0.4rem" }}>
-          {["Chat", "Notes", "Quiz"].map((t) => (
-            <span key={t} style={{
-              fontSize: "0.68rem", padding: "0.2rem 0.5rem",
-              borderRadius: "0.35rem", background: "var(--bg-hover)",
-              color: "var(--text-muted)", border: "1px solid var(--border)",
-            }}>
-              {t}
-            </span>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

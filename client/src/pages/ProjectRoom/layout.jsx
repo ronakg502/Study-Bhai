@@ -30,8 +30,9 @@ export default function ProjectRoom() {
   const [activeTab, setActiveTab] = useState("chat");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
-  const [pdfText, setPdfText] = useState("");      // extracted PDF text
+  const [pdfText, setPdfText] = useState("");       // extracted PDF text
   const [uploaded, setUploaded] = useState(false);
+  const [pdfFileName, setPdfFileName] = useState(""); // original filename
 
   // Fetch real project metadata from Supabase
   const [meta, setMeta] = useState({ name: "Loading…", icon: "📁", color: "#6366f1" });
@@ -56,14 +57,12 @@ export default function ProjectRoom() {
     fetchProject();
   }, [id]);
 
-  const ActiveComponent = COMPONENTS[activeTab];
 
   // ── Real file upload ───────────────────────────────────────
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Basic validation
     if (file.type !== "application/pdf") {
       setUploadError("Please upload a PDF file.");
       return;
@@ -87,6 +86,7 @@ export default function ProjectRoom() {
       if (res.data?.text) {
         setPdfText(res.data.text);
         setUploaded(true);
+        setPdfFileName(file.name);
       } else {
         setUploadError("Could not extract text from the PDF.");
       }
@@ -97,7 +97,6 @@ export default function ProjectRoom() {
       );
     } finally {
       setUploading(false);
-      // Reset the input so the same file can be re-selected
       e.target.value = "";
     }
   };
@@ -180,8 +179,8 @@ export default function ProjectRoom() {
               >
                 {meta.name}
               </h1>
-              <p style={{ fontSize: "0.67rem", color: "var(--text-muted)", margin: 0 }}>
-                {uploaded ? "✅ PDF loaded" : "No PDF yet"}
+              <p style={{ fontSize: "0.67rem", color: uploaded ? "#10b981" : "var(--text-muted)", margin: 0, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {uploaded ? `📄 ${pdfFileName}` : "No PDF uploaded yet"}
               </p>
             </div>
           </div>
@@ -218,7 +217,7 @@ export default function ProjectRoom() {
                 onChange={handleUpload}
                 disabled={uploading}
               />
-              {uploading ? "⏳ Uploading…" : uploaded ? "📄 PDF Ready ✓" : "📎 Upload PDF"}
+              {uploading ? "⏳ Uploading…" : uploaded ? "🔄 Change PDF" : "📎 Upload PDF"}
             </label>
           </div>
         </div>
@@ -292,8 +291,22 @@ export default function ProjectRoom() {
       </header>
 
       {/* ── Tab content ─────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: "auto" }} key={activeTab} className="fade-in">
-        <ActiveComponent pdfText={pdfText} projectId={id} />
+      {/* All tabs are mounted at once; inactive ones are hidden with CSS.       */}
+      {/* This keeps Chat state (message history) alive when switching tabs.     */}
+      <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>
+        {tabs.map((tab) => {
+          const TabComponent = COMPONENTS[tab.id];
+          const isActive = activeTab === tab.id;
+          return (
+            <div
+              key={tab.id}
+              className={isActive ? "fade-in" : ""}
+              style={{ display: isActive ? "block" : "none" }}
+            >
+              <TabComponent pdfText={pdfText} projectId={id} />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

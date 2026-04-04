@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import api from "../../api/axios";
 
 const EXAMPLES = [
   "Solve: ∫ x² sin(x) dx",
@@ -7,49 +8,35 @@ const EXAMPLES = [
   "Solve the ODE: dy/dx + 2y = e^x",
 ];
 
-const mockSteps = [
-  {
-    step: 1,
-    title: "Identify the Method",
-    content: "This is a definite integral requiring Integration by Parts:\n∫ u dv = uv − ∫ v du\n\nLet u = x², dv = sin(x)dx\nThen du = 2x dx, v = −cos(x)",
-    color: "#6366f1",
-  },
-  {
-    step: 2,
-    title: "First Application",
-    content: "Apply integration by parts:\n∫ x²sin(x)dx = −x²cos(x) + ∫ 2x·cos(x)dx\n\nNow apply IBP again to ∫ 2x·cos(x)dx:\nLet u = 2x, dv = cos(x)dx\ndu = 2dx, v = sin(x)",
-    color: "#ec4899",
-  },
-  {
-    step: 3,
-    title: "Second Application",
-    content: "∫ 2x·cos(x)dx = 2x·sin(x) − ∫ 2sin(x)dx\n= 2x·sin(x) + 2cos(x)",
-    color: "#10b981",
-  },
-  {
-    step: 4,
-    title: "Combine & Simplify",
-    content: "Combining all parts:\n∫ x²sin(x)dx = −x²cos(x) + 2x·sin(x) + 2cos(x) + C\n\n✅ Final Answer:\n= (2x − x²·1)cos(x) + 2x·sin(x) + C\n= 2x·sin(x) − (x²−2)cos(x) + C",
-    color: "#f59e0b",
-  },
-];
+const STEP_COLORS = ["#6366f1", "#ec4899", "#10b981", "#f59e0b", "#38bdf8", "#a78bfa"];
 
-export default function SumSolver() {
+export default function SumSolver({ pdfText, projectId }) {
   const [problem, setProblem] = useState("");
   const [solving, setSolving] = useState(false);
   const [solution, setSolution] = useState(null);
   const [expandedStep, setExpandedStep] = useState(null);
+  const [error, setError] = useState("");
   const textareaRef = useRef(null);
 
   const handleSolve = async (text) => {
     const q = text || problem;
-    if (!q.trim()) return;
+    if (!q.trim() || solving) return;
     setSolving(true);
     setSolution(null);
-    await new Promise((r) => setTimeout(r, 1800));
-    setSolving(false);
-    setSolution({ problem: q, steps: mockSteps });
-    setExpandedStep(0);
+    setError("");
+    setExpandedStep(null);
+    try {
+      const res = await api.post("/ai/solve", { problem: q });
+      const raw = res.data.solution;
+      // Assign colors to steps
+      raw.steps = raw.steps.map((s, i) => ({ ...s, color: STEP_COLORS[i % STEP_COLORS.length] }));
+      setSolution({ problem: q, ...raw });
+      setExpandedStep(0);
+    } catch (err) {
+      setError(err?.response?.data?.error || "Failed to solve. Please try again.");
+    } finally {
+      setSolving(false);
+    }
   };
 
   return (
@@ -67,11 +54,7 @@ export default function SumSolver() {
       {/* Input area */}
       <div
         className="fade-in card"
-        style={{
-          padding: "1.25rem",
-          marginBottom: "1.5rem",
-          borderColor: problem ? "rgba(99,102,241,0.35)" : undefined,
-        }}
+        style={{ padding: "1.25rem", marginBottom: "1.5rem", borderColor: problem ? "rgba(99,102,241,0.35)" : undefined }}
       >
         <textarea
           ref={textareaRef}
@@ -79,6 +62,7 @@ export default function SumSolver() {
           placeholder="Enter a problem, e.g: Solve ∫ x² sin(x) dx using integration by parts..."
           value={problem}
           onChange={(e) => setProblem(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSolve(); } }}
           rows={3}
           style={{ resize: "none", marginBottom: "0.875rem", fontSize: "0.95rem", border: "none", background: "transparent", padding: "0", boxShadow: "none" }}
         />
@@ -87,13 +71,8 @@ export default function SumSolver() {
             {EXAMPLES.map((ex) => (
               <button
                 key={ex}
-                onClick={() => { setProblem(ex); }}
-                style={{
-                  padding: "0.25rem 0.75rem", borderRadius: "2rem",
-                  background: "var(--bg-hover)", border: "1px solid var(--border)",
-                  color: "var(--text-muted)", fontSize: "0.75rem", cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
+                onClick={() => setProblem(ex)}
+                style={{ padding: "0.25rem 0.75rem", borderRadius: "2rem", background: "var(--bg-hover)", border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: "0.75rem", cursor: "pointer", transition: "all 0.2s" }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent-light)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-muted)"; }}
               >
@@ -107,14 +86,16 @@ export default function SumSolver() {
             onClick={() => handleSolve()}
             style={{ flexShrink: 0, padding: "0.625rem 1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}
           >
-            {solving ? (
-              <><span className="spinner" /> Solving…</>
-            ) : (
-              "Solve →"
-            )}
+            {solving ? (<><span className="spinner" /> Solving…</>) : "Solve →"}
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="card fade-in" style={{ padding: "1rem 1.25rem", marginBottom: "1.5rem", borderColor: "rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.05)" }}>
+          <p style={{ color: "#ef4444", fontSize: "0.875rem", margin: 0 }}>⚠️ {error}</p>
+        </div>
+      )}
 
       {/* Solving animation */}
       {solving && (
@@ -126,13 +107,7 @@ export default function SumSolver() {
           <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
             {["Parsing", "Solving", "Verifying"].map((s, i) => (
               <div key={s} style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                <div
-                  style={{
-                    width: 8, height: 8, borderRadius: "50%",
-                    background: "var(--accent-light)",
-                    animation: `dotPulse 1.2s ease-in-out ${i * 0.2}s infinite`,
-                  }}
-                />
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent-light)", animation: `dotPulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />
                 <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{s}</span>
               </div>
             ))}
@@ -144,18 +119,7 @@ export default function SumSolver() {
       {solution && !solving && (
         <div className="fade-in">
           {/* Problem restatement */}
-          <div
-            style={{
-              padding: "1rem 1.25rem",
-              background: "rgba(99,102,241,0.08)",
-              border: "1px solid rgba(99,102,241,0.2)",
-              borderRadius: "0.875rem",
-              marginBottom: "1.25rem",
-              display: "flex",
-              gap: "0.75rem",
-              alignItems: "flex-start",
-            }}
-          >
+          <div style={{ padding: "1rem 1.25rem", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "0.875rem", marginBottom: "1.25rem", display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
             <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>📌</span>
             <div>
               <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: "0 0 0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Problem</p>
@@ -175,45 +139,19 @@ export default function SumSolver() {
                 <div
                   key={i}
                   className="card"
-                  style={{
-                    overflow: "hidden", cursor: "pointer",
-                    borderColor: isOpen ? `${s.color}55` : undefined,
-                    transition: "all 0.2s",
-                  }}
+                  style={{ overflow: "hidden", cursor: "pointer", borderColor: isOpen ? `${s.color}55` : undefined, transition: "all 0.2s" }}
                   onClick={() => setExpandedStep(isOpen ? null : i)}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem 1.25rem" }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-                      background: `${s.color}20`, border: `1.5px solid ${s.color}50`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "0.85rem", fontWeight: 700, color: s.color,
-                      fontFamily: "'Space Grotesk', sans-serif",
-                    }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, background: `${s.color}20`, border: `1.5px solid ${s.color}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 700, color: s.color, fontFamily: "'Space Grotesk', sans-serif" }}>
                       {s.step}
                     </div>
-                    <span style={{ flex: 1, fontWeight: 600, fontSize: "0.9rem", color: "var(--text-primary)" }}>
-                      {s.title}
-                    </span>
-                    <span style={{
-                      color: "var(--text-muted)", fontSize: "0.85rem",
-                      transform: isOpen ? "rotate(180deg)" : "none",
-                      transition: "transform 0.2s", display: "inline-block",
-                    }}>▼</span>
+                    <span style={{ flex: 1, fontWeight: 600, fontSize: "0.9rem", color: "var(--text-primary)" }}>{s.title}</span>
+                    <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
                   </div>
                   {isOpen && (
-                    <div
-                      className="fade-in"
-                      style={{
-                        padding: "0.875rem 1.25rem 1.25rem",
-                        borderTop: `1px solid ${s.color}30`,
-                        background: `${s.color}08`,
-                      }}
-                    >
-                      <pre style={{
-                        margin: 0, color: "var(--text-secondary)", fontSize: "0.875rem",
-                        lineHeight: 1.8, whiteSpace: "pre-wrap", fontFamily: "'Inter', sans-serif",
-                      }}>
+                    <div className="fade-in" style={{ padding: "0.875rem 1.25rem 1.25rem", borderTop: `1px solid ${s.color}30`, background: `${s.color}08` }}>
+                      <pre style={{ margin: 0, color: "var(--text-secondary)", fontSize: "0.875rem", lineHeight: 1.8, whiteSpace: "pre-wrap", fontFamily: "'Inter', sans-serif" }}>
                         {s.content}
                       </pre>
                     </div>
@@ -223,20 +161,23 @@ export default function SumSolver() {
             })}
           </div>
 
+          {/* Final answer */}
+          {solution.finalAnswer && (
+            <div style={{ marginTop: "1rem", padding: "1rem 1.25rem", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: "0.875rem", display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+              <span style={{ fontSize: "1.1rem" }}>✅</span>
+              <div>
+                <p style={{ fontSize: "0.72rem", color: "#10b981", margin: "0 0 0.25rem", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>Final Answer</p>
+                <p style={{ color: "var(--text-primary)", fontSize: "0.95rem", margin: 0, fontFamily: "monospace", fontWeight: 600 }}>{solution.finalAnswer}</p>
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
-            <button
-              className="btn-primary"
-              onClick={() => { setSolution(null); setProblem(""); }}
-              style={{ fontSize: "0.85rem", padding: "0.625rem 1.25rem" }}
-            >
+            <button className="btn-primary" onClick={() => { setSolution(null); setProblem(""); }} style={{ fontSize: "0.85rem", padding: "0.625rem 1.25rem" }}>
               + New Problem
             </button>
-            <button
-              className="btn-ghost"
-              onClick={() => setExpandedStep(expandedStep !== null ? null : 0)}
-              style={{ fontSize: "0.85rem" }}
-            >
+            <button className="btn-ghost" onClick={() => setExpandedStep(expandedStep !== null ? null : 0)} style={{ fontSize: "0.85rem" }}>
               {expandedStep !== null ? "Collapse All" : "Expand All"}
             </button>
           </div>

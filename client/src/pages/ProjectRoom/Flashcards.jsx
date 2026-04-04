@@ -1,54 +1,45 @@
 import { useState } from "react";
+import api from "../../api/axios";
 
-const initialCards = [
-  {
-    id: 1,
-    front: "What does Faraday's Law state?",
-    back: "A changing magnetic flux through a closed loop induces an EMF.\nε = −dΦ/dt\n(The negative sign = Lenz's Law — the induced EMF opposes the change)",
-    topic: "Electromagnetic Induction",
-    color: "#6366f1",
-  },
-  {
-    id: 2,
-    front: "What is the Lorentz Force equation?",
-    back: "F = q(E + v × B)\n• qE → force from electric field\n• q(v × B) → force from magnetic field (perpendicular to motion)",
-    topic: "Lorentz Force",
-    color: "#ec4899",
-  },
-  {
-    id: 3,
-    front: "How many of Maxwell's equations are there? Name them.",
-    back: "4 equations:\n1. Gauss's Law for Electricity\n2. Gauss's Law for Magnetism\n3. Faraday's Law\n4. Ampere-Maxwell Law",
-    topic: "Maxwell's Equations",
-    color: "#f59e0b",
-  },
-  {
-    id: 4,
-    front: "What is the speed of electromagnetic waves in vacuum?",
-    back: "c ≈ 2.998 × 10⁸ m/s\n\nDerived from Maxwell's equations:\nc = 1/√(μ₀ε₀)",
-    topic: "Electromagnetic Waves",
-    color: "#10b981",
-  },
-  {
-    id: 5,
-    front: "What is the SI unit of magnetic flux density?",
-    back: "Tesla (T)\n1 T = 1 Wb/m² = 1 kg/(A·s²)\n\nSmaller: Gauss (G)\n1 T = 10,000 G",
-    topic: "Magnetic Fields",
-    color: "#38bdf8",
-  },
-];
+const COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#38bdf8", "#a78bfa", "#fb923c", "#34d399"];
 
-export default function Flashcards() {
-  const [cards] = useState(initialCards);
+export default function Flashcards({ pdfText, projectId }) {
+  const [cards, setCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [mode, setMode] = useState("browse"); // "browse" | "quiz"
   const [known, setKnown] = useState([]);
   const [review, setReview] = useState([]);
   const [done, setDone] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState("");
 
   const card = cards[currentIndex];
-  const progress = ((currentIndex) / cards.length) * 100;
+
+  const generateCards = async () => {
+    if (!pdfText) {
+      setError("Please upload a PDF first to generate flashcards.");
+      return;
+    }
+    setGenerating(true);
+    setError("");
+    setCards([]);
+    setCurrentIndex(0);
+    setFlipped(false);
+    setKnown([]);
+    setReview([]);
+    setDone(false);
+    try {
+      const res = await api.post("/ai/flashcards", { context: pdfText });
+      const raw = res.data.cards;
+      const colored = raw.map((c, i) => ({ ...c, id: i + 1, color: COLORS[i % COLORS.length] }));
+      setCards(colored);
+    } catch (err) {
+      setError(err?.response?.data?.error || "Failed to generate flashcards. Try again.");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const next = () => {
     setFlipped(false);
@@ -78,10 +69,85 @@ export default function Flashcards() {
     setDone(false);
   };
 
+  // ── Empty / generate state ───────────────────────────────────────
+  if (cards.length === 0 && !generating) {
+    return (
+      <div style={{ maxWidth: 700, margin: "0 auto", padding: "1.5rem" }}>
+        <div className="fade-in" style={{ marginBottom: "1.5rem" }}>
+          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.3rem", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 0.25rem" }}>
+            🃏 Flashcards
+          </h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", margin: 0 }}>
+            AI-generated flashcards from your uploaded material
+          </p>
+        </div>
+
+        <div
+          className="card fade-in"
+          style={{
+            padding: "3rem 2rem",
+            textAlign: "center",
+            border: "2px dashed var(--border)",
+            background: "rgba(99,102,241,0.03)",
+          }}
+        >
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🃏</div>
+          <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.1rem", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 0.5rem" }}>
+            No flashcards yet
+          </h3>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: "0 0 1.5rem", lineHeight: 1.6 }}>
+            {pdfText ? "Click below to generate 10 AI flashcards from your uploaded PDF." : "Upload a PDF first, then generate flashcards from it."}
+          </p>
+          {error && (
+            <p style={{ color: "#ef4444", fontSize: "0.82rem", marginBottom: "1rem" }}>⚠️ {error}</p>
+          )}
+          <button
+            className="btn-primary"
+            onClick={generateCards}
+            disabled={!pdfText}
+            style={{ padding: "0.75rem 2rem", opacity: !pdfText ? 0.5 : 1 }}
+          >
+            ✨ Generate Flashcards from PDF
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Generating state ─────────────────────────────────────────────
+  if (generating) {
+    return (
+      <div style={{ maxWidth: 700, margin: "0 auto", padding: "1.5rem" }}>
+        <div className="card fade-in" style={{ padding: "3rem", textAlign: "center" }}>
+          <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🃏</div>
+          <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.1rem", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 0.5rem" }}>
+            Generating Flashcards…
+          </h3>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: "0 0 1.5rem" }}>
+            AI is reading your material and creating cards…
+          </p>
+          <div style={{ display: "flex", justifyContent: "center", gap: "6px" }}>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                style={{
+                  width: 9, height: 9, borderRadius: "50%",
+                  background: "var(--accent-light)",
+                  animation: `dotPulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Cards available ──────────────────────────────────────────────
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "1.5rem" }}>
       {/* Header */}
-      <div className="fade-in" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+      <div className="fade-in" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
         <div>
           <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.3rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
             🃏 Flashcards
@@ -101,12 +167,20 @@ export default function Flashcards() {
               {m === "browse" ? "📖 Browse" : "🎯 Quiz"}
             </button>
           ))}
+          <button
+            className="btn-ghost"
+            onClick={generateCards}
+            disabled={!pdfText || generating}
+            style={{ fontSize: "0.8rem", padding: "0.4rem 0.875rem" }}
+          >
+            🔄 Regenerate
+          </button>
         </div>
       </div>
 
       {/* Progress bar */}
       <div style={{ height: 3, background: "var(--border)", borderRadius: 2, marginBottom: "1.5rem", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${((currentIndex + 1) / cards.length) * 100}%`, background: `linear-gradient(90deg, #6366f1, #8b5cf6)`, borderRadius: 2, transition: "width 0.4s ease" }} />
+        <div style={{ height: "100%", width: `${((currentIndex + 1) / cards.length) * 100}%`, background: "linear-gradient(90deg, #6366f1, #8b5cf6)", borderRadius: 2, transition: "width 0.4s ease" }} />
       </div>
 
       {done ? (
@@ -134,19 +208,12 @@ export default function Flashcards() {
         <>
           {/* ── Flashcard ──────────────────────── */}
           <div
-            style={{
-              perspective: 1000,
-              height: 280,
-              cursor: "pointer",
-              marginBottom: "1.5rem",
-            }}
+            style={{ perspective: 1000, height: 280, cursor: "pointer", marginBottom: "1.5rem" }}
             onClick={() => setFlipped(!flipped)}
           >
             <div
               style={{
-                position: "relative",
-                width: "100%",
-                height: "100%",
+                position: "relative", width: "100%", height: "100%",
                 transition: "transform 0.5s cubic-bezier(0.4,0,0.2,1)",
                 transformStyle: "preserve-3d",
                 transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
@@ -155,18 +222,11 @@ export default function Flashcards() {
               {/* Front */}
               <div
                 style={{
-                  position: "absolute",
-                  inset: 0,
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                  background: "var(--bg-card)",
-                  border: `1px solid ${card.color}44`,
-                  borderRadius: "1.25rem",
-                  padding: "2rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  position: "absolute", inset: 0, backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden", background: "var(--bg-card)",
+                  border: `1px solid ${card.color}44`, borderRadius: "1.25rem",
+                  padding: "2rem", display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center",
                   boxShadow: `0 0 40px ${card.color}18`,
                 }}
               >
@@ -187,29 +247,19 @@ export default function Flashcards() {
               {/* Back */}
               <div
                 style={{
-                  position: "absolute",
-                  inset: 0,
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                  transform: "rotateY(180deg)",
+                  position: "absolute", inset: 0, backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)",
                   background: `linear-gradient(135deg, ${card.color}18, ${card.color}08)`,
-                  border: `1px solid ${card.color}66`,
-                  borderRadius: "1.25rem",
-                  padding: "2rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  border: `1px solid ${card.color}66`, borderRadius: "1.25rem",
+                  padding: "2rem", display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center",
                   boxShadow: `0 0 40px ${card.color}22`,
                 }}
               >
                 <div style={{ position: "absolute", top: "1rem", left: "1rem" }}>
                   <span style={{ fontSize: "0.7rem", color: "#10b981", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>✅ Answer</span>
                 </div>
-                <pre style={{
-                  fontSize: "0.9rem", color: "var(--text-primary)", textAlign: "center",
-                  margin: 0, lineHeight: 1.7, whiteSpace: "pre-wrap", fontFamily: "'Inter', sans-serif",
-                }}>
+                <pre style={{ fontSize: "0.9rem", color: "var(--text-primary)", textAlign: "center", margin: 0, lineHeight: 1.7, whiteSpace: "pre-wrap", fontFamily: "'Inter', sans-serif" }}>
                   {card.back}
                 </pre>
               </div>
@@ -234,19 +284,13 @@ export default function Flashcards() {
               <>
                 <button
                   onClick={handleReview}
-                  style={{
-                    padding: "0.625rem 1.25rem", background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.4)",
-                    borderRadius: "0.75rem", color: "#f59e0b", cursor: "pointer", fontWeight: 600, fontSize: "0.85rem",
-                  }}
+                  style={{ padding: "0.625rem 1.25rem", background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.4)", borderRadius: "0.75rem", color: "#f59e0b", cursor: "pointer", fontWeight: 600, fontSize: "0.85rem" }}
                 >
                   🔁 Review
                 </button>
                 <button
                   onClick={handleKnew}
-                  style={{
-                    padding: "0.625rem 1.25rem", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)",
-                    borderRadius: "0.75rem", color: "#10b981", cursor: "pointer", fontWeight: 600, fontSize: "0.85rem",
-                  }}
+                  style={{ padding: "0.625rem 1.25rem", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)", borderRadius: "0.75rem", color: "#10b981", cursor: "pointer", fontWeight: 600, fontSize: "0.85rem" }}
                 >
                   ✅ Got it
                 </button>
@@ -256,10 +300,7 @@ export default function Flashcards() {
             {(!flipped || mode === "browse") && (
               <button
                 onClick={() => setFlipped(true)}
-                style={{
-                  padding: "0.625rem 1.5rem", background: "var(--accent-dim)", border: "1px solid rgba(99,102,241,0.35)",
-                  borderRadius: "0.75rem", color: "var(--accent-light)", cursor: "pointer", fontWeight: 600, fontSize: "0.85rem",
-                }}
+                style={{ padding: "0.625rem 1.5rem", background: "var(--accent-dim)", border: "1px solid rgba(99,102,241,0.35)", borderRadius: "0.75rem", color: "var(--accent-light)", cursor: "pointer", fontWeight: 600, fontSize: "0.85rem" }}
               >
                 Show Answer
               </button>
@@ -285,14 +326,9 @@ export default function Flashcards() {
                 key={i}
                 onClick={() => { setCurrentIndex(i); setFlipped(false); }}
                 style={{
-                  width: i === currentIndex ? 20 : 8,
-                  height: 8,
-                  borderRadius: 4,
+                  width: i === currentIndex ? 20 : 8, height: 8, borderRadius: 4,
                   background: i === currentIndex ? card.color : "var(--border)",
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "all 0.3s ease",
-                  padding: 0,
+                  border: "none", cursor: "pointer", transition: "all 0.3s ease", padding: 0,
                 }}
               />
             ))}
