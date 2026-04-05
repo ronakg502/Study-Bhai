@@ -2,7 +2,7 @@ import axios from "axios";
 import { supabase } from "../lib/supabase";
 
 const api = axios.create({
-  baseURL: "https://study-bhai.onrender.com",
+  baseURL: "https://study-bhai.onrender.com/api",
 });
 
 // Attach the Supabase auth token to every request automatically
