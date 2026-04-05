@@ -124,6 +124,7 @@ export default function ProjectRoom() {
       >
         {/* Row 1: Back + Project name + actions */}
         <div
+          className="project-header-row1"
           style={{
             display: "flex",
             alignItems: "center",
@@ -224,6 +225,7 @@ export default function ProjectRoom() {
 
         {/* Row 2: Tab pill toggle */}
         <div
+          className="project-tabs-row"
           style={{
             padding: "0 1.5rem 0.75rem",
             display: "flex",

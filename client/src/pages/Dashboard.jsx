@@ -347,6 +347,7 @@ export default function Dashboard() {
 
       {/* ── Sidebar ────────────────────────────────── */}
       <aside
+        className="dashboard-sidebar"
         style={{
           position: "fixed", top: 0, left: 0,
           width: 240, height: "100vh",
@@ -358,7 +359,7 @@ export default function Dashboard() {
         }}
       >
         {/* Logo */}
-        <div style={{ paddingBottom: "1.25rem", borderBottom: "1px solid var(--border)", marginBottom: "0.75rem" }}>
+        <div className="dashboard-sidebar-logo" style={{ paddingBottom: "1.25rem", borderBottom: "1px solid var(--border)", marginBottom: "0.75rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0 0.25rem" }}>
             <div style={{
               width: 34, height: 34, borderRadius: "0.625rem",
@@ -380,7 +381,7 @@ export default function Dashboard() {
 
         {/* New Project button */}
         <button
-          className="btn-primary"
+          className="btn-primary dashboard-new-btn"
           onClick={() => setShowNew(true)}
           style={{ width: "100%", padding: "0.625rem", marginBottom: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
         >
@@ -388,7 +389,7 @@ export default function Dashboard() {
         </button>
 
         {/* Nav */}
-        <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+        <nav className="dashboard-sidebar-nav" style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.2rem" }}>
           {NAV.map((item) => (
             <div
               key={item.key}
@@ -403,6 +404,7 @@ export default function Dashboard() {
 
         {/* User card */}
         <div
+          className="dashboard-user-card"
           style={{
             padding: "0.75rem",
             borderRadius: "0.875rem",
@@ -442,10 +444,10 @@ export default function Dashboard() {
       </aside>
 
       {/* ── Main ───────────────────────────────────── */}
-      <main style={{ marginLeft: 240, padding: "2rem 2rem 4rem", minHeight: "100vh" }}>
+      <main className="dashboard-main" style={{ marginLeft: 240, padding: "2rem 2rem 4rem", minHeight: "100vh" }}>
 
         {/* Header */}
-        <div className="fade-in" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
+        <div className="fade-in dashboard-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
           <div>
             <h1 style={{
               fontFamily: "'Space Grotesk', sans-serif",
@@ -460,7 +462,7 @@ export default function Dashboard() {
           </div>
 
           {/* Search */}
-          <div style={{ position: "relative", width: 260 }}>
+          <div className="dashboard-search" style={{ position: "relative", width: 260 }}>
             <span style={{ position: "absolute", left: "0.875rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", fontSize: "0.9rem" }}>🔍</span>
             <input
               className="input-dark"
@@ -474,7 +476,7 @@ export default function Dashboard() {
 
         {/* Stats */}
         <div
-          className="fade-in"
+          className="fade-in stats-grid"
           style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem", marginBottom: "2.5rem" }}
         >
           {STATS.map((s) => (
@@ -545,7 +547,7 @@ export default function Dashboard() {
             </button>
           </div>
         ) : (
-          <div className="fade-in" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem" }}>
+          <div className="fade-in projects-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem" }}>
             {filtered.map((project, idx) => (
               <ProjectCard key={project.id} project={project} delay={idx * 0.07} onClick={() => navigate(`/project/${project.id}`)} onDelete={(e) => handleDelete(e, project.id)} />
             ))}

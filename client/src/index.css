@@ -490,3 +490,149 @@ body {
   z-index: 200;
   animation: fadeIn 0.2s ease;
 }
+
+/* ════════════════════════════════════════
+   MOBILE RESPONSIVE — Breakpoints
+   ════════════════════════════════════════ */
+
+/* ── Tablet & below (≤ 900px) ── */
+@media (max-width: 900px) {
+  /* Dashboard: collapse sidebar into a top bar */
+  .dashboard-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100% !important;
+    height: auto !important;
+    flex-direction: row !important;
+    padding: 0.625rem 1rem !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    z-index: 100;
+    overflow-x: auto;
+  }
+
+  .dashboard-sidebar-logo {
+    display: none !important;
+  }
+
+  .dashboard-sidebar-nav {
+    flex-direction: row !important;
+    flex: 1;
+    gap: 0.25rem !important;
+  }
+
+  .dashboard-user-card {
+    display: none !important;
+  }
+
+  .dashboard-new-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .dashboard-main {
+    margin-left: 0 !important;
+    padding-top: 5rem !important;
+  }
+
+  /* Dashboard: 2 stats → 2 col still fine */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Projects: 2-col grid */
+  .projects-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── Mobile (≤ 640px) ── */
+@media (max-width: 640px) {
+  /* Dashboard main padding */
+  .dashboard-main {
+    padding: 5rem 1rem 2rem !important;
+  }
+
+  /* Stats: 2 col on mobile */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.625rem !important;
+  }
+
+  /* Projects: single column */
+  .projects-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Dashboard header: stack vertically */
+  .dashboard-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+  }
+
+  .dashboard-search {
+    width: 100% !important;
+  }
+
+  /* Project room: compact header */
+  .project-header-row1 {
+    padding: 0.625rem 0.875rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .project-tabs-row {
+    padding: 0 0.875rem 0.625rem !important;
+  }
+
+  /* Tab labels: shorter on mobile */
+  .tab-label-full {
+    display: none;
+  }
+
+  .tab-label-short {
+    display: inline !important;
+  }
+
+  /* Chat bubbles: wider on mobile */
+  .chat-user,
+  .chat-ai {
+    max-width: 92% !important;
+  }
+
+  /* Auth card: full width */
+  .glass {
+    border-radius: 1rem !important;
+  }
+
+  /* New project modal: full height on small screens */
+  .modal-overlay {
+    align-items: flex-end !important;
+  }
+
+  .modal-overlay > div {
+    border-radius: 1.5rem 1.5rem 0 0 !important;
+    max-height: 92vh;
+    overflow-y: auto;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* ── Small mobile (≤ 400px) ── */
+@media (max-width: 400px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .nav-item span:last-child {
+    display: none;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 0.5rem !important;
+  }
+}
