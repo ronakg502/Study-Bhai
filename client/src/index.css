@@ -491,148 +491,159 @@ body {
   animation: fadeIn 0.2s ease;
 }
 
-/* ════════════════════════════════════════
-   MOBILE RESPONSIVE — Breakpoints
-   ════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE  —  Compact sidebar rail
+   ════════════════════════════════════════════════════════ */
 
-/* ── Tablet & below (≤ 900px) ── */
-@media (max-width: 900px) {
-  /* Dashboard: collapse sidebar into a top bar */
+/* Bottom nav hidden always (desktop + mobile) */
+.bottom-nav { display: none; }
+
+/* ══════════ Mobile ≤ 768px ══════════ */
+@media (max-width: 768px) {
+
+  /* ── Sidebar: 80px compact rail ── */
   .dashboard-sidebar {
-    position: fixed !important;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100% !important;
-    height: auto !important;
-    flex-direction: row !important;
-    padding: 0.625rem 1rem !important;
-    border-right: none !important;
-    border-bottom: 1px solid var(--border) !important;
-    z-index: 100;
-    overflow-x: auto;
+    width: 80px !important;
+    padding: 1.25rem 0.5rem !important;
+    align-items: center !important;
+    overflow: visible !important;
   }
 
+  /* Logo: center the book emoji, hide text */
   .dashboard-sidebar-logo {
-    display: none !important;
+    width: 100% !important;
+    padding-bottom: 1rem !important;
+    margin-bottom: 0.75rem !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+  .dashboard-sidebar-logo > div > span { display: none !important; }
+
+  /* Logo icon bigger on mobile */
+  .dashboard-sidebar-logo > div > div {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 0.75rem !important;
+    font-size: 1.25rem !important;
   }
 
-  .dashboard-sidebar-nav {
-    flex-direction: row !important;
-    flex: 1;
-    gap: 0.25rem !important;
-  }
-
-  .dashboard-user-card {
-    display: none !important;
-  }
-
+  /* New project: compact square gradient button */
   .dashboard-new-btn {
-    white-space: nowrap;
-    flex-shrink: 0;
+    width: 48px !important;
+    height: 48px !important;
+    padding: 0 !important;
+    border-radius: 0.875rem !important;
+    margin-bottom: 1rem;
+    justify-content: center;
+    font-size: 1.4rem !important;
+    box-shadow: 0 4px 16px rgba(99,102,241,0.4);
+  }
+  .dashboard-new-btn .btn-label { display: none !important; }
+
+  /* Nav items: emoji above, label below */
+  .nav-item {
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 0.6rem 0.25rem !important;
+    width: 100%;
+    border-radius: 0.75rem !important;
+    text-align: center;
+    min-height: 56px;
+  }
+  .nav-item span:first-child { font-size: 1.35rem !important; }
+  .nav-label {
+    font-size: 0.62rem !important;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: inherit;
   }
 
+  /* User card: just avatar + logout icon below, centered */
+  .dashboard-user-card {
+    padding: 0.5rem !important;
+    justify-content: center !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100%;
+    border-radius: 0.875rem !important;
+    gap: 4px !important;
+  }
+  /* Hide the name/plan text */
+  .dashboard-user-card > div:nth-child(2) { display: none !important; }
+  /* Keep avatar but resize */
+  .dashboard-user-card > div:first-child {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 0.82rem !important;
+  }
+  /* Show logout button as small icon */
+  .dashboard-user-card button {
+    display: flex !important;
+    font-size: 0.85rem !important;
+    padding: 0.2rem !important;
+    width: 28px !important;
+    height: 28px !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.4rem !important;
+    background: rgba(239,68,68,0.08) !important;
+    border: 1px solid rgba(239,68,68,0.2) !important;
+    color: #ef4444 !important;
+  }
+
+  /* ── Main: offset for 80px sidebar ── */
   .dashboard-main {
-    margin-left: 0 !important;
-    padding-top: 5rem !important;
+    margin-left: 80px !important;
+    padding: 1.5rem 1rem 2.5rem !important;
   }
 
-  /* Dashboard: 2 stats → 2 col still fine */
+  /* Stats: 2 columns */
   .stats-grid {
     grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
   }
 
-  /* Projects: 2-col grid */
-  .projects-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-}
-
-/* ── Mobile (≤ 640px) ── */
-@media (max-width: 640px) {
-  /* Dashboard main padding */
-  .dashboard-main {
-    padding: 5rem 1rem 2rem !important;
-  }
-
-  /* Stats: 2 col on mobile */
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.625rem !important;
-  }
-
-  /* Projects: single column */
+  /* Projects: 1 column */
   .projects-grid {
     grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
   }
 
-  /* Dashboard header: stack vertically */
+  /* Header: stack */
   .dashboard-header {
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 0.75rem !important;
   }
+  .dashboard-search { width: 100% !important; }
 
-  .dashboard-search {
-    width: 100% !important;
-  }
+  /* Project room */
+  .project-header-row1 { padding: 0.625rem 1rem !important; }
+  .project-tabs-row { padding: 0 1rem 0.625rem !important; overflow-x: auto; }
+  .project-tabs-row button { padding: 0.4rem 0.75rem !important; font-size: 0.78rem !important; }
 
-  /* Project room: compact header */
-  .project-header-row1 {
-    padding: 0.625rem 0.875rem !important;
-    gap: 0.5rem !important;
-  }
+  /* Chat */
+  .chat-user, .chat-ai { max-width: 92% !important; }
 
-  .project-tabs-row {
-    padding: 0 0.875rem 0.625rem !important;
-  }
-
-  /* Tab labels: shorter on mobile */
-  .tab-label-full {
-    display: none;
-  }
-
-  .tab-label-short {
-    display: inline !important;
-  }
-
-  /* Chat bubbles: wider on mobile */
-  .chat-user,
-  .chat-ai {
-    max-width: 92% !important;
-  }
-
-  /* Auth card: full width */
-  .glass {
-    border-radius: 1rem !important;
-  }
-
-  /* New project modal: full height on small screens */
-  .modal-overlay {
-    align-items: flex-end !important;
-  }
-
+  /* Modal slides up */
+  .modal-overlay { align-items: flex-end !important; }
   .modal-overlay > div {
     border-radius: 1.5rem 1.5rem 0 0 !important;
-    max-height: 92vh;
+    max-height: 90vh !important;
     overflow-y: auto;
     margin: 0 !important;
     width: 100% !important;
+    max-width: 100% !important;
   }
 }
 
-/* ── Small mobile (≤ 400px) ── */
+/* ══════════ Small phone ≤ 400px ══════════ */
 @media (max-width: 400px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-
-  .nav-item span:last-child {
-    display: none;
-  }
-
-  .nav-item {
-    justify-content: center;
-    padding: 0.5rem !important;
-  }
+  .dashboard-sidebar { width: 68px !important; }
+  .dashboard-main { margin-left: 68px !important; padding: 1rem 0.75rem 2rem !important; }
+  .stats-grid { gap: 0.5rem !important; }
 }
+

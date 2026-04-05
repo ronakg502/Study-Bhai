@@ -385,19 +385,21 @@ export default function Dashboard() {
           onClick={() => setShowNew(true)}
           style={{ width: "100%", padding: "0.625rem", marginBottom: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
         >
-          <span style={{ fontSize: "1.1rem" }}>＋</span> New Project
+          <span style={{ fontSize: "1.1rem" }}>＋</span>
+          <span className="btn-label">New Project</span>
         </button>
 
         {/* Nav */}
-        <nav className="dashboard-sidebar-nav" style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+        <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.2rem" }}>
           {NAV.map((item) => (
             <div
               key={item.key}
               className={`nav-item ${activeNav === item.key ? "active" : ""}`}
               onClick={() => setActiveNav(item.key)}
+              title={item.label}
             >
               <span style={{ fontSize: "1rem" }}>{item.icon}</span>
-              <span>{item.label}</span>
+              <span className="nav-label">{item.label}</span>
             </div>
           ))}
         </nav>
