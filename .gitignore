@@ -5,17 +5,23 @@
 
 # Dependencies
 node_modules/
-client/node_modules/
-server/node_modules/
+**/node_modules/
 
 # Build output
 dist/
 build/
 
+# Uploaded files (Render has ephemeral filesystem — don't commit uploads)
+server/uploads/*
+!server/uploads/.gitkeep
+
 # Logs
 *.log
 npm-debug.log*
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
+
+# Vite cache
+.vite/
